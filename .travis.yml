@@ -41,7 +41,7 @@ cache:
 
 install:
   # Install Platform IO
-  - pip install -U platformio
+  - pip install -U https://github.com/platformio/platformio-core/archive/develop.zip
   - platformio platform install espressif8266 --with-package tool-mkspiffs
   - platformio platform install https://github.com/platformio/platform-espressif8266.git#feature/stage --with-package tool-mkspiffs
 
