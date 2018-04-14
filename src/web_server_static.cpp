@@ -72,8 +72,10 @@ void StaticFileWebHandler::handleRequest(AsyncWebServerRequest *request)
   dumpRequest(request);
 
   // Are we authenticated
-  if(wifi_mode_is_sta() && www_username!="" &&
-    false == request->authenticate(www_username.c_str(), www_password.c_str())) {
+  if(wifi_mode_is_sta() &&
+     _username != "" && _password != "" &&
+     false == request->authenticate(_username.c_str(), _password.c_str()))
+  {
     request->requestAuthentication(esp_hostname);
     return;
   }
@@ -123,15 +125,15 @@ size_t StaticFileResponse::writeData(AsyncWebServerRequest *request)
 {
   size_t space = request->client()->space();
 
-  //DBUGF("%p: StaticFileResponse::write: %s %d %d@%p", request,
-  //  RESPONSE_SETUP == _state ? "RESPONSE_SETUP" :
-  //  RESPONSE_HEADERS == _state ? "RESPONSE_HEADERS" :
-  //  RESPONSE_CONTENT == _state ? "RESPONSE_CONTENT" :
-  //  RESPONSE_WAIT_ACK == _state ? "RESPONSE_WAIT_ACK" :
-  //  RESPONSE_END == _state ? "RESPONSE_END" :
-  //  RESPONSE_FAILED == _state ? "RESPONSE_FAILED" :
-  //  "UNKNOWN",
-  //  space, length, ptr);
+  DBUGF("%p: StaticFileResponse::write: %s %d %d@%p, free %d", request,
+    RESPONSE_SETUP == _state ? "RESPONSE_SETUP" :
+    RESPONSE_HEADERS == _state ? "RESPONSE_HEADERS" :
+    RESPONSE_CONTENT == _state ? "RESPONSE_CONTENT" :
+    RESPONSE_WAIT_ACK == _state ? "RESPONSE_WAIT_ACK" :
+    RESPONSE_END == _state ? "RESPONSE_END" :
+    RESPONSE_FAILED == _state ? "RESPONSE_FAILED" :
+    "UNKNOWN",
+    space, length, ptr, ESP.getFreeHeap());
 
   if(length > 0 && space > 0)
   {

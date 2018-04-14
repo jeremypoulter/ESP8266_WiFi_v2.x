@@ -56,14 +56,25 @@ $RECYCLE.BIN/
 .piolibdeps
 .clang_complete
 .gcc-flags.json
-.vscode
-.vscode/browse.vc.db*
 
 full-upload.sh
 *.gch
-.vscode/browse.vc.db*
-.vscode/c_cpp_properties.json
 
 # Python code
 *.pyc
 .cache
+
+# Simulator
+node_modules
+package-lock.json
+
+.vagrant
+ubuntu-xenial-16.04-cloudimg-console.log
+
+# VSCode stuff
+.vscode
+.vscode/browse.vc.db*
+.vscode/c_cpp_properties.json
+.vscode/*.db
+.vscode/launch.json
+.vscode/.browse.c_cpp.db*

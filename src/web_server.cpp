@@ -198,7 +198,9 @@ handleScan(AsyncWebServerRequest *request) {
     return;
   }
 
+  DBUGF("Starting WiFi scan");
   WiFi.scanNetworksAsync([request, response](int networksFound) {
+    DBUGF("%d networks found", networksFound);
     String json = "[";
     for (int i = 0; i < networksFound; ++i) {
       if(i) json += ",";
@@ -786,10 +788,32 @@ handleRapi(AsyncWebServerRequest *request) {
       if(0 == ret && rapi.startsWith(F("$ST"))) {
         delayTimer = rapi.substring(4);
       }
-      if(1 == ret && rapi.equals(F("$GD"))) {
-        ret = 0;
-        rapiString = F("$OK ");
-        rapiString += delayTimer;
+      if(1 == ret)
+      {
+        if(rapi.equals(F("$GD"))) {
+          ret = 0;
+          rapiString = F("$OK ");
+          rapiString += delayTimer;
+        }
+        else if (rapi.startsWith(F("$FF")))
+        {
+          DBUGF("Attempting legacy FF support");
+
+          String fallback = F("$S");
+          fallback += rapi.substring(4);
+
+          DBUGF("Attempting %s", fallback.c_str());
+
+          comm_sent++;
+          int ret = rapiSender.sendCmd(fallback.c_str());
+          if(0 == ret)
+          {
+            String rapiString = rapiSender.getResponse();
+            if(0 == ret) {
+              comm_success++;
+            }
+          }
+        }
       }
 
       if (json) {

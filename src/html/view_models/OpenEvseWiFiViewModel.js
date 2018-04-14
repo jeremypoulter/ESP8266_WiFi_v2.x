@@ -1,13 +1,34 @@
 /* global $, ko, ConfigViewModel, StatusViewModel, RapiViewModel, WiFiScanViewModel, WiFiConfigViewModel, OpenEvseViewModel */
 /* exported OpenEvseWiFiViewModel */
 
-function OpenEvseWiFiViewModel(baseHost)
+function OpenEvseWiFiViewModel(baseHost, basePort, baseProtocol)
 {
   "use strict";
   var self = this;
 
   self.baseHost = ko.observable("" !== baseHost ? baseHost : "openevse.local");
-  self.baseEndpoint = ko.pureComputed(function () { return "http://" + self.baseHost(); });
+  self.basePort = ko.observable(basePort);
+  self.baseProtocol = ko.observable(baseProtocol);
+
+  self.baseEndpoint = ko.pureComputed(function () {
+    var endpoint = "//" + self.baseHost();
+    if(80 !== self.basePort()) {
+      endpoint += ":"+self.basePort();
+    }
+    return endpoint;
+  });
+
+  self.wsEndpoint = ko.pureComputed(function () {
+    var endpoint = "ws://" + self.baseHost();
+    if("https:" === self.baseProtocol()){
+      endpoint = "wss://" + self.baseHost();
+    }
+    if(80 !== self.basePort()) {
+      endpoint += ":"+self.basePort();
+    }
+    endpoint += "/ws";
+    return endpoint;
+  });
 
   self.config = new ConfigViewModel(self.baseEndpoint);
   self.status = new StatusViewModel(self.baseEndpoint);
@@ -34,6 +55,8 @@ function OpenEvseWiFiViewModel(baseHost)
   // Info text display state
   self.showMqttInfo = ko.observable(false);
   self.showSolarDivert = ko.observable(false);
+  self.showSafety = ko.observable(false);
+  
 
   self.toggle = function (flag) {
     flag(!flag());
@@ -41,12 +64,18 @@ function OpenEvseWiFiViewModel(baseHost)
 
   // Advanced mode
   self.advancedMode = ko.observable(false);
+  self.advancedMode.subscribe(function (val) {
+    self.setCookie("advancedMode", val.toString());
+  });
 
   // Developer mode
   self.developerMode = ko.observable(false);
-  self.developerMode.subscribe(function (val) { if(val) {
-    self.advancedMode(true); // Enabling dev mode implicitly enables advanced mode
-  }});
+  self.developerMode.subscribe(function (val) {
+    self.setCookie("developerMode", val.toString());
+    if(val) {
+      self.advancedMode(true); // Enabling dev mode implicitly enables advanced mode
+    }
+  });
 
   var updateTimer = null;
   var updateTime = 5 * 1000;
@@ -74,10 +103,17 @@ function OpenEvseWiFiViewModel(baseHost)
   // -----------------------------------------------------------------------
   // Initialise the app
   // -----------------------------------------------------------------------
+  self.loadedCount = ko.observable(0);
+  self.itemsLoaded = ko.pureComputed(function () {
+    return self.loadedCount() + self.openevse.updateCount();
+  });
+  self.itemsTotal = ko.observable(2 + self.openevse.updateTotal());
   self.start = function () {
     self.updating(true);
     self.status.update(function () {
+      self.loadedCount(self.loadedCount() + 1);
       self.config.update(function () {
+        self.loadedCount(self.loadedCount() + 1);
         // If we are accessing on a .local domain try and redirect
         if(self.baseHost().endsWith(".local") && "" !== self.status.ipaddress()) {
           if("" === self.config.www_username())
@@ -85,7 +121,7 @@ function OpenEvseWiFiViewModel(baseHost)
             // Redirect to the IP internally
             self.baseHost(self.status.ipaddress());
           } else {
-            window.location.replace("http://" + self.status.ipaddress());
+            window.location.replace("http://" + self.status.ipaddress() + ":" + self.basePort());
           }
         }
         self.openevse.update(function () {
@@ -108,6 +144,10 @@ function OpenEvseWiFiViewModel(baseHost)
       });
       self.connect();
     });
+
+    // Set the advanced and developer modes from Cookies
+    self.advancedMode(self.getCookie("advancedMode", "false") === "true");
+    self.developerMode(self.getCookie("developerMode", "false") === "true");
   };
 
   // -----------------------------------------------------------------------
@@ -405,7 +445,7 @@ function OpenEvseWiFiViewModel(baseHost)
   self.reconnectInterval = false;
   self.socket = false;
   self.connect = function () {
-    self.socket = new WebSocket("ws://"+self.baseHost()+"/ws");
+    self.socket = new WebSocket(self.wsEndpoint());
     self.socket.onopen = function (ev) {
       console.log(ev);
       self.pingInterval = setInterval(function () {
@@ -437,5 +477,31 @@ function OpenEvseWiFiViewModel(baseHost)
         self.connect();
       }, 500);
     }
+  };
+
+  // Cookie management, based on https://www.w3schools.com/js/js_cookies.asp
+  self.setCookie = function (cname, cvalue, exdays = false) {
+    var expires = "";
+    if(false !== exdays) {
+      var d = new Date();
+      d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
+      expires = ";expires="+d.toUTCString();
+    }
+    document.cookie = cname + "=" + cvalue + expires + ";path=/";
+  };
+
+  self.getCookie = function (cname, def = "") {
+    var name = cname + "=";
+    var ca = document.cookie.split(";");
+    for(var i = 0; i < ca.length; i++) {
+      var c = ca[i];
+      while (c.charAt(0) === " ") {
+        c = c.substring(1);
+      }
+      if (c.indexOf(name) === 0) {
+        return c.substring(name.length, c.length);
+      }
+    }
+    return def;
   };
 }
