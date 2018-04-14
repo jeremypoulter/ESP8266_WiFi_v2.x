@@ -45,6 +45,40 @@ get_https(const char *fingerprint, const char *host, String url,
   return ("error " + String(host));
 }
 
+String
+get_https(const char *host, String url,
+          int httpsPort, const char *cert, size_t cert_len) {
+  // Use WiFiClient class to create TCP connections
+  if (!client.connect(host, httpsPort)) {
+    DEBUG.print(host + httpsPort);      //debug
+    return ("Connection error");
+  }
+  client.setCACert_P(cert, cert_len);
+  if (client.verifyCertChain(host)) {
+    client.print(String("GET ") + url + " HTTP/1.1\r\n" + "Host: " + host +
+                 "\r\n" + "Connection: close\r\n\r\n");
+    // Handle wait for reply and timeout
+    unsigned long timeout = millis();
+    while (client.available() == 0) {
+      if (millis() - timeout > 5000) {
+        client.stop();
+        return ("Client Timeout");
+      }
+    }
+    // Handle message receive
+    while (client.available()) {
+      String line = client.readStringUntil('\r');
+      DEBUG.println(line);      //debug
+      if (line.startsWith("HTTP/1.1 200 OK")) {
+        return ("ok");
+      }
+    }
+  } else {
+    return ("HTTPS fingerprint no match");
+  }
+  return ("error " + String(host));
+}
+
 // -------------------------------------------------------------------
 // HTTP GET Request
 // url: N/A

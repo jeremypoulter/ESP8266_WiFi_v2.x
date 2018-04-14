@@ -12,6 +12,7 @@
 // url: N/A
 // -------------------------------------------------------------------
 extern String get_https(const char* fingerprint, const char* host, String url, int httpsPort);
+extern String get_https(const char* host, String url, int httpsPort, const char *cert, size_t cert_len);
 
 // -------------------------------------------------------------------
 // HTTP GET Request

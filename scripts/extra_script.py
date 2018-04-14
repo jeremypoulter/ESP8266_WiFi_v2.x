@@ -221,9 +221,20 @@ def process_html_app(source, dest, env):
     header_file = join("$PROJECTSRC_DIR", "web_server_static_files.h")
     env.Depends("$BUILDSRC_DIR/web_server_static.o", env.Command(header_file, manifest, make_static))
 
+import glob;
+def process_certs(source, env):
+    pattern = join(source, "*.cer")
+    for data_file in glob.glob(pattern):
+        file = basename(data_file)
+        header_file = join("$PROJECTSRC_DIR", "cert."+file+".h")
+        env.Depends("$BUILDSRC_DIR/http.o", env.Command(header_file, data_file, data_to_header))
+
 #
 # Generate Web app resources
 #
 html_src = join(env.subst("$PROJECTSRC_DIR"), "html")
 data_src = join(env.subst("$PROJECTSRC_DIR"), "data")
 process_html_app(html_src, data_src, env)
+
+cert_src = join(env.subst("$PROJECTSRC_DIR"), "certs")
+process_certs(cert_src, env)

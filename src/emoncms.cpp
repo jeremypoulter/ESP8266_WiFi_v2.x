@@ -13,6 +13,7 @@ boolean emoncms_connected = false;
 unsigned long packets_sent = 0;
 unsigned long packets_success = 0;
 
+#include "cert.dst_root_ca_x3.cer.h"
 
 void
 emoncms_publish(String url) {
@@ -28,8 +29,7 @@ emoncms_publish(String url) {
       DEBUG.println("HTTPS");
       delay(10);
       result =
-        get_https(emoncms_fingerprint.c_str(), emoncms_server.c_str(), url,
-                  443);
+        get_https(emoncms_server.c_str(), url, 443, CONTENT_DST_ROOT_CA_X3_CER, sizeof(CONTENT_DST_ROOT_CA_X3_CER) - 1);
     } else {
       // Plain HTTP if other emoncms server e.g EmonPi
       DEBUG.println("HTTP");
