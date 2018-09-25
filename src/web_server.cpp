@@ -110,6 +110,8 @@ bool requestPreProcess(AsyncWebServerRequest *request, AsyncResponseStream *&res
     response->addHeader(F("Access-Control-Allow-Origin"), F("*"));
   }
 
+  response->addHeader(F("Cache-Control"), F("no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0"));
+
   return true;
 }
 
@@ -460,7 +462,11 @@ handleStatus(AsyncWebServerRequest *request) {
   s += "\"nogndcount\":" + String(nognd_count) + ",";
   s += "\"stuckcount\":" + String(stuck_count) + ",";
 
-  s += "\"divertmode\":" + String(divertmode);
+  s += "\"divertmode\":" + String(divertmode) + ",";
+  s += "\"solar\":" + String(solar) + ",";
+  s += "\"grid_ie\":" + String(grid_ie) + ",";
+  s += "\"charge_rate\":" + String(charge_rate) + ",";
+  s += "\"divert_update\":" + String((millis() - lastUpdate) / 1000);
 
 #ifdef ENABLE_LEGACY_API
   s += ",\"networks\":[" + st + "]";
@@ -481,6 +487,10 @@ handleStatus(AsyncWebServerRequest *request) {
   s += ",\"ohmkey\":\"" + ohm + "\"";
 #endif
   s += "}";
+
+  DBUGVAR(lastUpdate);
+  DBUGVAR(millis());
+  DBUGVAR((millis() - lastUpdate) / 1000);
 
   response->setCode(200);
   response->print(s);

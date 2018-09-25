@@ -39,6 +39,7 @@ int min_charge_current = 6;      // TO DO: set to be min charge current as set o
 int max_charge_current = 32;     // TO DO: to be set to be max charge current as set on the OpenEVSE e.g. "$GC min-current max-current"
 int charge_rate = 0;
 int last_state = OPENEVSE_STATE_INVALID;
+uint32_t lastUpdate = 0;
 
 extern RapiSender rapiSender;
 
@@ -192,14 +193,50 @@ void divert_update_state()
       }
 
       // If charge rate > min current and EVSE is sleeping then start charging
-      if (state == OPENEVSE_STATE_SLEEPING){
+      if (state == OPENEVSE_STATE_SLEEPING)
+      {
         DBUGLN(F("Wake up EVSE"));
-        if(0 == rapiSender.sendCmd(F("$FE"))) {
+        bool chargeStarted = false;
+
+        // Check if the timer is enabled, we need to do a bit of hackery if it is
+        if(0 == rapiSender.sendCmd("$GD"))
+        {
+          if(rapiSender.getTokenCnt() >= 5 &&
+             (0 != String(rapiSender.getToken(1)).toInt() ||
+              0 != String(rapiSender.getToken(2)).toInt() ||
+              0 != String(rapiSender.getToken(3)).toInt() ||
+              0 != String(rapiSender.getToken(4)).toInt()))
+          {
+            // Timer is enabled so we need to emulate a button press to work around
+            // an issue with $FE not working
+            if(false == chargeStarted && 0 == rapiSender.sendCmd(F("$F1"))) {
+              DBUGLN(F("Starting charge with button press"));
+              chargeStarted = true;
+            }
+          }
+        }
+
+        if(false == chargeStarted && 0 == rapiSender.sendCmd(F("$FE"))) {
           DBUGLN(F("Starting charge"));
         }
       }
     }
   } // end ecomode
+
+  DBUGVAR(charge_rate);
+
+  String event = mqtt_grid_ie != "" ? F("{\"grid_ie\":") : F("{\"solar\":");
+  event += mqtt_grid_ie != "" ? String(grid_ie) : String(solar);
+  if (divertmode == DIVERT_MODE_ECO)
+  {
+    event += F(",\"charge_rate\":");
+    event += String(charge_rate);
+  }
+  event += F(",\"divert_update\":0}");
+  DBUGVAR(event);
+  event_send(event);
+
+  lastUpdate = millis();
 
   Profile_End(divert_update_state, 5);
 } //end divert_update_state
