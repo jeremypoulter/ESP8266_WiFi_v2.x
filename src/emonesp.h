@@ -20,4 +20,7 @@ extern HardwareSerial Serial1;
 #endif
 #endif
 
+// https://stackoverflow.com/questions/4415524/common-array-length-macro-for-c
+#define COUNT_OF(x) ((sizeof(x)/sizeof(0[x])) / ((size_t)(!(sizeof(x) % sizeof(0[x])))))
+
 #endif // _EMONESP_H

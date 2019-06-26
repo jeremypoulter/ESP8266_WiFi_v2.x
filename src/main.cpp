@@ -54,6 +54,16 @@ boolean rapi_read = 0; //flag to indicate first read of RAPI status
 // SETUP
 // -------------------------------------------------------------------
 void setup() {
+#ifdef EXTRA_LED
+  // HACK for the ESP-WROVER-KIT, turn off LEDs not used
+  int extra[] = EXTRA_LED;
+  for(int i = 0; i < COUNT_OF(extra); i++)
+  {
+    pinMode(extra[i], OUTPUT);
+    digitalWrite(extra[i], LOW);
+  }
+#endif
+
   delay(2000);
   RAPI_PORT.begin(115200);
   pinMode(0, INPUT);
