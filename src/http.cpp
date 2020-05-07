@@ -20,9 +20,13 @@ get_https(const char *fingerprint, const char *host, String url,
     DEBUG.print(host + httpsPort);      //debug
     return ("Connection error");
   }
-  if (client.verify(fingerprint, host)) {
-    client.print(String("GET ") + url + " HTTP/1.1\r\n" + "Host: " + host +
-                 "\r\n" + "Connection: close\r\n\r\n");
+  if (client.verify(fingerprint, host))
+  {
+    client.print(String("GET ") + url +  F(" HTTP/1.1\r\n") +
+                   F("Host: ") + host + F("\r\n") +
+                   F("User-Agent: OpenEVSE\r\n") +
+                   F("Connection: close\r\n\r\n"));
+
     // Handle wait for reply and timeout
     unsigned long timeout = millis();
     while (client.available() == 0) {
@@ -35,14 +39,14 @@ get_https(const char *fingerprint, const char *host, String url,
     while (client.available()) {
       String line = client.readStringUntil('\r');
       DEBUG.println(line);      //debug
-      if (line.startsWith("HTTP/1.1 200 OK")) {
+      if (line.startsWith(F("HTTP/1.1 200 OK"))) {
         return ("ok");
       }
     }
   } else {
-    return ("HTTPS fingerprint no match");
+    return (String(F("HTTPS fingerprint no match")));
   }
-  return ("error " + String(host));
+  return (String(F("error ")) + String(host));
 }
 
 // -------------------------------------------------------------------

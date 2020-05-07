@@ -238,7 +238,7 @@ handleAPOff(AsyncWebServerRequest *request) {
   response->print("Turning AP Off");
   request->send(response);
 
-  DBUGLN("Turning AP Off");
+  DBUGLN(F("Turning AP Off"));
   apOffTime = millis() + 1000;
 }
 

@@ -180,7 +180,7 @@ EEPROM_write_uint24(int start, uint32_t value) {
 // -------------------------------------------------------------------
 void
 config_load_settings() {
-  DBUGLN("Loading config");
+  DBUGLN(F("Loading config"));
   EEPROM.begin(EEPROM_SIZE);
 
   // Load WiFi values

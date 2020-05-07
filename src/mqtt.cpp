@@ -28,7 +28,7 @@ void mqttmsg_callback(char *topic, byte * payload, unsigned int length) {
   payload_str = "";
   // print received MQTT to debug
 
-  DBUGLN("MQTT received:");
+  DBUGLN(F("MQTT received:"));
   DBUGF("Topic: %s", topic);
 
   for (int i = 0; i < length; i++) {

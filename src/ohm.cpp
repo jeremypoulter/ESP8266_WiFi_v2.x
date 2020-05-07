@@ -3,6 +3,9 @@
 #include "wifi.h"
 #include "config.h"
 #include "RapiSender.h"
+#include "http.h"
+
+#include <asyncHTTPrequest.h>
 
 #include <WiFiClientSecure.h>
 #include <ESP8266HTTPClient.h>
@@ -11,6 +14,7 @@
 
 #define ACTIVE_TAG_START  "<active>"
 #define ACTIVE_TAG_END    "</active>"
+#define OHM_BUFFER_LEN    512
 
 //Server strings for Ohm Connect
 const char *ohm_host = "login.ohmconnect.com";
@@ -22,6 +26,48 @@ String ohm_hour = "NotConnected";
 int evse_sleep = 0;
 
 extern RapiSender rapiSender;
+extern HTTPClient http;
+
+static asyncHTTPrequest asyncHTTP;
+
+static void ohm_parse_xml(String xml)
+{
+  int active_start = xml.indexOf(ACTIVE_TAG_START);
+  int active_end = xml.indexOf(ACTIVE_TAG_END);
+
+  if(active_start > 0 && active_end > 0)
+  {
+    active_start += sizeof(ACTIVE_TAG_START) - 1;
+
+    String new_ohm_hour = xml.substring(active_start, active_end);
+    DBUGVAR(new_ohm_hour);
+
+    if(new_ohm_hour != ohm_hour)
+    {
+      ohm_hour = new_ohm_hour;
+      if(ohm_hour == "True")
+      {
+        DBUGLN(F("Ohm Hour"));
+        if (evse_sleep == 0) {
+          evse_sleep = 1;
+          if(0 == rapiSender.sendCmd(F("$FS"))) {
+            DBUGLN(F("Charging Started"));
+          }
+        }
+      }
+      else
+      {
+        DBUGLN(F("It is not an Ohm Hour"));
+        if (evse_sleep == 1) {
+          evse_sleep = 0;
+          if(0 == rapiSender.sendCmd(F("$FE"))) {
+            DBUGLN(F("Charging Stopped"));
+          }
+        }
+      }
+    }
+  }
+}
 
 // -------------------------------------------------------------------
 // Ohm Connect "Ohm Hour"
@@ -36,6 +82,7 @@ void ohm_loop()
 
   if (ohm != 0)
   {
+    /*
     WiFiClientSecure client;
     if (!client.connect(ohm_host, ohm_httpsPort)) {
       DBUGLN(F("ERROR Ohm Connect - connection failed"));
@@ -43,51 +90,48 @@ void ohm_loop()
     }
     if (client.verify(ohm_fingerprint, ohm_host))
     {
-      client.print(String("GET ") + ohm_url + ohm + " HTTP/1.1\r\n" +
-                   "Host: " + ohm_host + "\r\n" +
-                   "User-Agent: OpenEVSE\r\n" + "Connection: close\r\n\r\n");
-
-      String line = client.readString();
+      client.print(String("GET ") + ohm_url + ohm + F(" HTTP/1.1\r\n") +
+                   F("Host: ") + ohm_host + F("\r\n") +
+                   F("User-Agent: OpenEVSE\r\n") +
+                   F("Connection: close\r\n\r\n"));
+      String line = client.readStringUntil('\n');
+*/
+/*
+    http.begin(ohm_host, 443, ohm_url + ohm, ohm_fingerprint);
+    int httpCode = http.GET();
+    DBUGVAR(httpCode);
+    if ((httpCode > 0) && (httpCode == HTTP_CODE_OK))
+    {
+      String line = http.getString();
       DBUGVAR(line);
-
-      int active_start = line.indexOf(ACTIVE_TAG_START);
-      int active_end = line.indexOf(ACTIVE_TAG_END);
-
-      if(active_start > 0 && active_end > 0)
-      {
-        active_start += sizeof(ACTIVE_TAG_START) - 1;
-
-        String new_ohm_hour = line.substring(active_start, active_end);
-        DBUGVAR(new_ohm_hour);
-
-        if(new_ohm_hour != ohm_hour)
-        {
-          ohm_hour = new_ohm_hour;
-          if(ohm_hour == "True")
-          {
-            DBUGLN(F("Ohm Hour"));
-            if (evse_sleep == 0) {
-              evse_sleep = 1;
-              if(0 == rapiSender.sendCmd(F("$FS"))) {
-                DBUGLN(F("Charging Started"));
-              }
-            }
-          }
-          else
-          {
-            DBUGLN(F("It is not an Ohm Hour"));
-            if (evse_sleep == 1) {
-              evse_sleep = 0;
-              if(0 == rapiSender.sendCmd(F("$FE"))) {
-                DBUGLN(F("Charging Stopped"));
-              }
-            }
-          }
-        }
-      }
+      ohm_parse_xml(line);
     } else {
       DBUGLN(F("ERROR Ohm Connect - Certificate Invalid"));
     }
+
+    http.end();
+*/
+    String url = String(F("https://")) + ohm_host + ohm_url + ohm;
+    DBUGVAR(url);
+    asyncHTTP.open("GET", url.c_str());
+    asyncHTTP.onReadyStateChange([](void*, asyncHTTPrequest *req, int readyState)
+    {
+      DBUGVAR(readyState);
+      if(4 != readyState) {
+        return;
+      }
+
+      if(req->responseHTTPcode() != 200){
+        DBUGF("HTTP request: %d", req->responseHTTPcode());
+        return;
+      }
+
+      String response = req->responseText();
+      DBUGVAR(response);
+      ohm_parse_xml(response);
+    });
+    DBUGLN("Ohm hour send");
+    asyncHTTP.send();
   }
 
   Profile_End(ohm_loop, 5);

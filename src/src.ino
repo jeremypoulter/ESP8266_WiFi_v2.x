@@ -100,7 +100,7 @@ void setup() {
       DBUGVAR(state);
     }
   } else {
-    DBUGLN("OpenEVSE not responding or not connected");
+    DBUGLN(F("OpenEVSE not responding or not connected"));
   }
 } // end setup
 
@@ -122,7 +122,7 @@ loop() {
 
   // Gives OpenEVSE time to finish self test on cold start
   if ( (millis() > 5000) && (rapi_read==0) ) {
-    DBUGLN("first read RAPI values");
+    DBUGLN(F("first read RAPI values"));
     handleRapiRead(); //Read all RAPI values
     rapi_read=1;
   }
@@ -145,7 +145,7 @@ loop() {
     // Do these things once every 30 seconds
     // -------------------------------------------------------------------
     if ((millis() - Timer1) >= 30000) {
-      DBUGLN("Time1");
+      DBUGLN(F("Time1"));
 
       create_rapi_json(); // create JSON Strings for EmonCMS and MQTT
       if (config_emoncms_enabled()) {
